@@ -1,3 +1,4 @@
 .idea
-tasks/__pycache__
-__pycache__
+tasks/__pycache__/*
+__pycache__/*
+task_manager/__pycache__/*
