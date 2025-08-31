@@ -1,5 +1,7 @@
 from django.contrib import messages
-
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Task
 from .forms import TaskForm
@@ -13,20 +15,35 @@ def index(request):
     """
     return render(request, "tasks/base.html")
 
+def signup(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, "Welcome! Your account is ready.")
+            return redirect("task_list")
+    else:
+        form = UserCreationForm()
+    return render(request, "auth/signup.html", { 'form': form })
 
+@login_required()
 def task_list(request):
-    tasks = Task.objects.all().order_by("-created_at")
+    tasks = Task.objects.filter(user=request.user).order_by("-created_at")
     status = request.GET.get('status')
     if status:
         tasks = tasks.filter(status=status)
     return render(request, 'tasks/task_list.html', {'tasks': tasks})
 
+@login_required()
 def task_detail(request, pk):
-    task = get_object_or_404(Task, pk=pk)
+    task = get_object_or_404(Task, pk=pk, user=request.user)
     return render(request, 'tasks/task_detail.html', {'task': task })
 
+
+@login_required()
 def task_edit(request, pk):
-    task = get_object_or_404(Task, pk=pk)
+    task = get_object_or_404(Task, pk=pk, user=request.user)
     form = TaskForm(request.POST or None, instance=task)
     if request.method == 'POST' and form.is_valid():
         form.save()
@@ -34,6 +51,7 @@ def task_edit(request, pk):
         return redirect('task_list')
     return render(request, "tasks/task_form.html", {'form': form })
 
+@login_required()
 def task_create(request):
     form = TaskForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
@@ -44,8 +62,9 @@ def task_create(request):
         return redirect("task_list")
     return render(request, "tasks/task_form.html", { 'form': form})
 
+@login_required()
 def task_delete(request, pk):
-    task = get_object_or_404(Task, pk=pk)
+    task = get_object_or_404(Task, pk=pk, user=request.user)
     if request.method == 'POST':
         task.delete()
         messages.info(request, 'Task deleted')
